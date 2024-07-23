@@ -3383,7 +3383,7 @@ namespace ModelCompiler
                     template.AddReplacement("<BaseT>", GetTemplateParameter(variableType));
                 }
 
-                template.AddReplacement("_DefaultValue_", GetDefaultValue(variableType.DataTypeNode, variableType.ValueRank, variableType.DefaultValue, variableType.DecodedValue, false));
+                template.AddReplacement("_DefaultValue_", GetDefaultValue(variableType.DataTypeNode, variableType.ValueRank, false, variableType.DefaultValue, variableType.DecodedValue, false));
                 template.AddReplacement("_ValueRank_", GetValueRank(variableType.ValueRank, variableType.ArrayDimensions));
                 template.AddReplacement("_ArrayDimensions_", GetArrayDimensions(variableType.ValueRank, variableType.ArrayDimensions));
                 template.AddReplacement("_IsAbstract_", GetBooleanValue(variableType.IsAbstract));
@@ -3771,7 +3771,7 @@ namespace ModelCompiler
             template.WriteLine(String.Empty);
 
             template.AddReplacement("_ClassName_", type.ClassName);
-            template.AddReplacement("_DataType_", GetSystemTypeName(type.DataTypeNode, ValueRank.Scalar));
+            template.AddReplacement("_DataType_", GetSystemTypeName(type.DataTypeNode, ValueRank.Scalar, false));
 
             AddTemplate(
                 template,
@@ -3883,7 +3883,7 @@ namespace ModelCompiler
             template.AddReplacement("_ChildName_", field.Value.Key);
             // template.AddReplacement("_ChildPath_", field.Value.Key.Replace('_', '.'));
             template.AddReplacement("_ChildPath_", field.Value.Key);
-            template.AddReplacement("_ChildDataType_", GetSystemTypeName(field.Value.Value.DataTypeNode, field.Value.Value.ValueRank));
+            template.AddReplacement("_ChildDataType_", GetSystemTypeName(field.Value.Value.DataTypeNode, field.Value.Value.ValueRank, field.Value.Value.IsOptional));
 
             return template.WriteTemplate(context);
         }
@@ -3943,7 +3943,7 @@ namespace ModelCompiler
                 }
 
                 template.WriteNextLine(context.Prefix);
-                template.Write("private {0} {1};", GetSystemTypeName(field.DataTypeNode, field.ValueRank), GetChildFieldName(field));
+                template.Write("private {0} {1};", GetSystemTypeName(field.DataTypeNode, field.ValueRank, field.IsOptional), GetChildFieldName(field));
 
                 return context.TemplatePath;
             }
@@ -4113,7 +4113,7 @@ namespace ModelCompiler
                         if (field.DataTypeNode.BaseTypeNode.SymbolicId == new XmlQualifiedName("OptionSet", DefaultNamespace))
                         {
                             functionName = "Encodeable";
-                            elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                            elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
                             break;
                         }
 
@@ -4125,7 +4125,7 @@ namespace ModelCompiler
 
                     if (field.ValueRank == ValueRank.Array)
                     {
-                        elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                        elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
                         template.Write("encoder.WriteEnumeratedArray(\"{0}\", {0}.ToArray(), typeof({1}));", field.Name, elementName);
 
                         if (isUnion)
@@ -4178,7 +4178,7 @@ namespace ModelCompiler
                     }
 
                     functionName = "Encodeable";
-                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
 
                     if (field.ValueRank == ValueRank.Array)
                     {
@@ -4283,7 +4283,7 @@ namespace ModelCompiler
                         if (field.DataTypeNode.BaseTypeNode.SymbolicId == new XmlQualifiedName("OptionSet", DefaultNamespace))
                         {
                             functionName = "Encodeable";
-                            elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                            elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
                             break;
                         }
 
@@ -4292,7 +4292,7 @@ namespace ModelCompiler
                     }
 
                     functionName = "Enumerated";
-                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
                     break;
                 }
 
@@ -4301,7 +4301,7 @@ namespace ModelCompiler
                     if (field.AllowSubTypes)
                     {
                         template.Write($"{valueName} = ");
-                        elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                        elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
 
                         if (field.ValueRank == ValueRank.Array)
                         { 
@@ -4338,7 +4338,7 @@ namespace ModelCompiler
                     }
 
                     functionName = "Encodeable";
-                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar);
+                    elementName = GetSystemTypeName(field.DataTypeNode, ValueRank.Scalar, false);
                     break;
                 }
             }
@@ -4452,7 +4452,7 @@ namespace ModelCompiler
                 template.Write($"if ((EncodingMask & {dataType.ClassName}Fields.{field.Name}) != 0) ");
             }
 
-            template.Write("clone.{0} = ({1})Utils.Clone(this.{0});", GetChildFieldName(field), GetSystemTypeName(field.DataTypeNode, field.ValueRank));
+            template.Write("clone.{0} = ({1})Utils.Clone(this.{0});", GetChildFieldName(field), GetSystemTypeName(field.DataTypeNode, field.ValueRank, field.IsOptional));
 
             if (dataType.IsUnion)
             {
@@ -4490,14 +4490,14 @@ namespace ModelCompiler
                 }
                 else
                 {
-                    format = "{1} {0} = ({1})ExtensionObject.ToArray(_inputArguments[{2}], typeof(" + GetMethodArgumentType(field.DataTypeNode, ValueRank.Scalar) + "));";
+                    format = "{1} {0} = ({1})ExtensionObject.ToArray(_inputArguments[{2}], typeof(" + GetMethodArgumentType(field.DataTypeNode, ValueRank.Scalar, false) + "));";
                 }
             }
 
             template.Write(
                 format,
                 GetChildFieldName(field).Substring(2),
-                GetMethodArgumentType(field.DataTypeNode, field.ValueRank),
+                GetMethodArgumentType(field.DataTypeNode, field.ValueRank, field.IsOptional),
                 context.Index);
 
             return context.TemplatePath;
@@ -4524,7 +4524,7 @@ namespace ModelCompiler
             template.Write(
                 "{1} {0} = ({1})_outputArguments[{2}];",
                 GetChildFieldName(field).Substring(2),
-                GetMethodArgumentType(field.DataTypeNode, field.ValueRank),
+                GetMethodArgumentType(field.DataTypeNode, field.ValueRank, field.IsOptional),
                 context.Index);
 
             return context.TemplatePath;
@@ -4584,7 +4584,7 @@ namespace ModelCompiler
 
                     template.Write(",");
                     template.WriteNextLine(context.Prefix);
-                    template.Write("{1} {0}", GetChildFieldName(argument).Substring(2), GetMethodArgumentType(argument.DataTypeNode, argument.ValueRank));
+                    template.Write("{1} {0}", GetChildFieldName(argument).Substring(2), GetMethodArgumentType(argument.DataTypeNode, argument.ValueRank, argument.IsOptional));
                 }
             }
 
@@ -4596,7 +4596,7 @@ namespace ModelCompiler
 
                     template.Write(",");
                     template.WriteNextLine(context.Prefix);
-                    template.Write("ref {1} {0}", GetChildFieldName(argument).Substring(2), GetMethodArgumentType(argument.DataTypeNode, argument.ValueRank));
+                    template.Write("ref {1} {0}", GetChildFieldName(argument).Substring(2), GetMethodArgumentType(argument.DataTypeNode, argument.ValueRank, argument.IsOptional));
                 }
             }
 
@@ -4664,7 +4664,7 @@ namespace ModelCompiler
                 return null;
             }
 
-            var value = GetDefaultValue(field.DataTypeNode, field.ValueRank, field.DefaultValue, null, true);
+            var value = GetDefaultValue(field.DataTypeNode, field.ValueRank, field.IsOptional, field.DefaultValue, null, true);
 
             template.WriteNextLine(context.Prefix);
             template.Write("{0} = {1};", GetChildFieldName(field), value);
@@ -4922,12 +4922,12 @@ namespace ModelCompiler
 
                 template.AddReplacement("_Description_", (field.Description != null)?field.Description.Value:"");
                 template.AddReplacement("_BrowseName_", field.Name);
-                template.AddReplacement("_TypeName_", GetSystemTypeName(field.DataTypeNode, field.ValueRank));
+                template.AddReplacement("_TypeName_", GetSystemTypeName(field.DataTypeNode, field.ValueRank, field.IsOptional));
                 template.AddReplacement("_FieldName_", GetChildFieldName(field));
                 template.AddReplacement("_IsRequired_", (valueType) ? "true" : "false");
                 template.AddReplacement(", EmitDefaultValue = _EmitDefaultValue_", (emitDefaultValue) ? "" : ", EmitDefaultValue = false");
                 template.AddReplacement("_FieldIndex_", Utils.Format("{0}", context.Index + 1));
-                template.AddReplacement("_DefaultValue_", GetDefaultValue(field.DataTypeNode, field.ValueRank, null, null, true));
+                template.AddReplacement("_DefaultValue_", GetDefaultValue(field.DataTypeNode, field.ValueRank, field.IsOptional, null, null, true));
                 template.AddReplacement("_Identifier_", field.Identifier.ToString());
 
                 if (field.IdentifierInName)
@@ -5321,7 +5321,7 @@ namespace ModelCompiler
 
                 default:
                 {
-                    scalarName = GetSystemTypeName(variable.DataTypeNode);
+                    scalarName = GetSystemTypeName(variable.DataTypeNode, false);
                     break;
                 }
             }
@@ -5445,7 +5445,7 @@ namespace ModelCompiler
 
                 default:
                 {
-                    scalarName = GetSystemTypeName(variableType.DataTypeNode);
+                    scalarName = GetSystemTypeName(variableType.DataTypeNode, false);
                     break;
                 }
             }
@@ -5655,6 +5655,7 @@ namespace ModelCompiler
         private string GetDefaultValue(
             DataTypeDesign dataType,
             ValueRank valueRank,
+            bool isOptional,
             XmlElement defaultValue,
             object decodedValue,
             bool useVariantForObject)
@@ -5666,7 +5667,7 @@ namespace ModelCompiler
                     return "null";
                 }
 
-                return Utils.Format("new {0}()", GetSystemTypeName(dataType, valueRank));
+                return Utils.Format("new {0}()", GetSystemTypeName(dataType, valueRank, isOptional));
             }
 
             if (dataType.BasicDataType == BasicDataType.BaseDataType || valueRank != ValueRank.Scalar)
@@ -5997,7 +5998,7 @@ namespace ModelCompiler
                 {
                     if (useVariantForObject)
                     {
-                        return Utils.Format("new {0}()", GetSystemTypeName(dataType, ValueRank.Scalar));
+                        return Utils.Format("new {0}()", GetSystemTypeName(dataType, ValueRank.Scalar, isOptional));
                     }
 
                     return "null";
@@ -6031,13 +6032,17 @@ namespace ModelCompiler
         /// <summary>
         /// Returns the data type for a method argument.
         /// </summary>
-        private string GetMethodArgumentType(DataTypeDesign datatype, ValueRank valueRank)
+        private string GetMethodArgumentType(DataTypeDesign datatype, ValueRank valueRank, bool isOptional)
         {
-            string typeName = GetSystemTypeName(datatype);
+            string typeName = GetSystemTypeName(datatype, isOptional);
 
             if (typeName == "Guid")
             {
                 typeName = "Uuid";
+            }
+            else if (typeName == "Guid?")
+            {
+                typeName = "Uuid?";
             }
             else if (typeName == "IEncodeable")
             {
@@ -6065,29 +6070,31 @@ namespace ModelCompiler
         /// <summary>
         /// Returns system type for a basic data type.
         /// </summary>
-        private string GetSystemTypeName(DataTypeDesign datatype)
+        private string GetSystemTypeName(DataTypeDesign datatype, bool isOptional)
         {
+            string nullableSuffix = isOptional ? "?" : "";
+            
             switch (datatype.BasicDataType)
             {
-                case BasicDataType.Boolean: { return "bool"; }
-                case BasicDataType.SByte: { return "sbyte"; }
-                case BasicDataType.Byte: { return "byte"; }
-                case BasicDataType.Int16: { return "short"; }
-                case BasicDataType.UInt16: { return "ushort"; }
-                case BasicDataType.Int32: { return "int"; }
-                case BasicDataType.UInt32: { return "uint"; }
-                case BasicDataType.Int64: { return "long"; }
-                case BasicDataType.UInt64: { return "ulong"; }
-                case BasicDataType.Float: { return "float"; }
-                case BasicDataType.Double: { return "double"; }
+                case BasicDataType.Boolean: { return "bool" + nullableSuffix; }
+                case BasicDataType.SByte: { return "sbyte" + nullableSuffix; }
+                case BasicDataType.Byte: { return "byte" + nullableSuffix; }
+                case BasicDataType.Int16: { return "short" + nullableSuffix; }
+                case BasicDataType.UInt16: { return "ushort" + nullableSuffix; }
+                case BasicDataType.Int32: { return "int" + nullableSuffix; }
+                case BasicDataType.UInt32: { return "uint" + nullableSuffix; }
+                case BasicDataType.Int64: { return "long" + nullableSuffix; }
+                case BasicDataType.UInt64: { return "ulong" + nullableSuffix; }
+                case BasicDataType.Float: { return "float" + nullableSuffix; }
+                case BasicDataType.Double: { return "double" + nullableSuffix; }
                 case BasicDataType.String: { return "string"; }
-                case BasicDataType.DateTime: { return "DateTime"; }
-                case BasicDataType.Guid: { return "Guid"; }
+                case BasicDataType.DateTime: { return "DateTime" + nullableSuffix; }
+                case BasicDataType.Guid: { return "Guid" + nullableSuffix; }
                 case BasicDataType.ByteString: { return "byte[]"; }
                 case BasicDataType.XmlElement: { return "XmlElement"; }
                 case BasicDataType.NodeId: { return "NodeId"; }
                 case BasicDataType.ExpandedNodeId: { return "ExpandedNodeId"; }
-                case BasicDataType.StatusCode: { return "StatusCode"; }
+                case BasicDataType.StatusCode: { return "StatusCode" + nullableSuffix; }
                 case BasicDataType.DiagnosticInfo: { return "DiagnosticInfo"; }
                 case BasicDataType.QualifiedName: { return "QualifiedName"; }
                 case BasicDataType.LocalizedText: { return "LocalizedText"; }
@@ -6110,12 +6117,12 @@ namespace ModelCompiler
                 {
                     if (datatype.SymbolicId == new XmlQualifiedName("Enumeration", DefaultNamespace))
                     {
-                        return "int";
+                        return "int" + nullableSuffix;
                     }
 
                     if (datatype.IsOptionSet)
                     {
-                        return GetSystemTypeName((DataTypeDesign)datatype.BaseTypeNode);
+                        return GetSystemTypeName((DataTypeDesign)datatype.BaseTypeNode, isOptional);
                     }
 
                     return datatype.SymbolicName.Name;
@@ -6139,15 +6146,20 @@ namespace ModelCompiler
         /// <summary>
         /// Returns system type for a basic data type.
         /// </summary>
-        private string GetSystemTypeName(DataTypeDesign datatype, ValueRank valueRank)
+        private string GetSystemTypeName(DataTypeDesign datatype, ValueRank valueRank, bool isOptional)
         {
             if (valueRank == ValueRank.Scalar)
             {
-                string typeName = GetSystemTypeName(datatype);
+                string typeName = GetSystemTypeName(datatype, isOptional);
 
                 if (typeName == "Guid")
                 {
                     return "Uuid";
+                }
+
+                if (typeName == "Guid?")
+                {
+                    return "Uuid?";
                 }
 
                 if (typeName == "object")
@@ -6213,7 +6225,7 @@ namespace ModelCompiler
 
                         if (datatype.IsOptionSet || datatype.BaseType != new XmlQualifiedName("Enumeration", DefaultNamespace))
                         {
-                            return GetSystemTypeName((DataTypeDesign)datatype.BaseTypeNode, valueRank);
+                            return GetSystemTypeName((DataTypeDesign)datatype.BaseTypeNode, valueRank, isOptional);
                         }
 
                         return datatype.SymbolicName.Name + "Collection";
